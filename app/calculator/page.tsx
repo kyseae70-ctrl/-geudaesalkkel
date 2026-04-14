@@ -189,7 +189,7 @@ function CalculatorContent() {
 
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 className="text-sm font-semibold text-gray-700 mb-4">결과 공유</h3>
-                <ShareCard result={result} holdings={holdings} />
+                <ShareCard result={result} holdings={holdings} settings={settings} />
               </div>
             </>
           )}

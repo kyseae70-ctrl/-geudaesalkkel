@@ -1,21 +1,32 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { BacktestResult, Holding } from '@/types';
+import { BacktestResult, Holding, InvestmentSettings } from '@/types';
 import { formatCurrency, formatPercent } from '@/lib/formatters';
+import { encodeShareUrl } from '@/lib/share';
 
 interface ShareCardProps {
   result: BacktestResult;
   holdings: Holding[];
+  settings: InvestmentSettings;
 }
 
-export default function ShareCard({ result, holdings }: ShareCardProps) {
+export default function ShareCard({ result, holdings, settings }: ShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [copying, setCopying] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   const { summary } = result;
   const portfolioDesc = holdings.map((h) => `${h.ticker} ${h.weight}%`).join(' + ');
+
+  // 공유 URL 생성
+  function getShareUrl(): string {
+    const path = encodeShareUrl(holdings, settings);
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}${path}`;
+    }
+    return path;
+  }
 
   async function downloadImage() {
     if (!cardRef.current) return;
@@ -35,20 +46,28 @@ export default function ShareCard({ result, holdings }: ShareCardProps) {
   async function copyUrl() {
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(getShareUrl());
       setTimeout(() => setCopying(false), 2000);
     } catch {
       setCopying(false);
     }
   }
 
-  function shareKakao() {
-    alert('카카오 SDK 연동 후 사용 가능합니다.');
+  function shareNative() {
+    const shareUrl = getShareUrl();
+    const text = `${portfolioDesc} 적립했다면 ${formatPercent(summary.portfolioReturn)} 수익! 그때살껄...`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ title: '그때살껄 백테스트 결과', text, url: shareUrl });
+    } else {
+      // Web Share API 미지원 시 URL 복사
+      navigator.clipboard.writeText(shareUrl);
+      alert('링크가 복사됐습니다. 카카오톡에 붙여넣기 하세요!');
+    }
   }
 
   function shareX() {
     const text = encodeURIComponent(
-      `${portfolioDesc} 적립했다면 ${formatPercent(summary.portfolioReturn)} 수익! 그때살껄... geudaesalkkel.com`
+      `${portfolioDesc} 적립했다면 ${formatPercent(summary.portfolioReturn)} 수익!\n그때살껄...\n${getShareUrl()}`
     );
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
   }
@@ -85,7 +104,7 @@ export default function ShareCard({ result, holdings }: ShareCardProps) {
 
         <div className="border-t border-gray-700 pt-3 text-xs text-gray-400 flex justify-between">
           <span>S&P500이었다면 {formatCurrency(summary.benchmarkValue)}</span>
-          <span className="text-green-400">
+          <span className={summary.portfolioValue >= summary.benchmarkValue ? 'text-green-400' : 'text-orange-400'}>
             {summary.portfolioValue >= summary.benchmarkValue
               ? `+${formatCurrency(summary.portfolioValue - summary.benchmarkValue)} 더!`
               : `${formatCurrency(summary.benchmarkValue - summary.portfolioValue)} 손해`}
@@ -117,7 +136,7 @@ export default function ShareCard({ result, holdings }: ShareCardProps) {
           {copying ? '복사됨!' : 'URL 복사'}
         </button>
         <button
-          onClick={shareKakao}
+          onClick={shareNative}
           className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-yellow-400 text-yellow-900 text-sm font-medium hover:bg-yellow-500 transition-colors"
         >
           카카오톡 공유
