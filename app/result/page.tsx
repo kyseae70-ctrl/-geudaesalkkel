@@ -3,10 +3,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { decodeShareParams } from '@/lib/share';
 import { runBacktest } from '@/lib/backtest';
-import { getMockPrices } from '@/lib/mock-data';
-import { getSupabaseClient } from '@/lib/supabase';
+import { fetchPricesFromSupabase } from '@/lib/prices';
 import { formatCurrency, formatPercent } from '@/lib/formatters';
-import { PriceRow } from '@/types';
 import MetricCards from '@/components/result/MetricCards';
 import LineChart from '@/components/result/LineChart';
 import HeatmapChart from '@/components/result/HeatmapChart';
@@ -19,34 +17,6 @@ interface Props {
   searchParams: Promise<Record<string, string>>;
 }
 
-async function fetchPrices(ticker: string, startDate: string, endDate: string): Promise<PriceRow[]> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return getMockPrices(ticker, startDate, endDate);
-
-  const allRows: PriceRow[] = [];
-  const PAGE_SIZE = 1000;
-  let from = 0;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from('etf_prices')
-      .select('date, close, dividend')
-      .eq('ticker', ticker)
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error || !data) break;
-    for (const row of data) {
-      allRows.push({ date: row.date, close: Number(row.close), dividend: Number(row.dividend ?? 0) });
-    }
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
-  }
-
-  return allRows.length > 0 ? allRows : getMockPrices(ticker, startDate, endDate);
-}
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
@@ -62,7 +32,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const portfolioDesc = holdings.map((h) => `${h.ticker} ${h.weight}%`).join(' + ');
 
   try {
-    const result = await runBacktest(holdings, settings, fetchPrices);
+    const result = await runBacktest(holdings, settings, fetchPricesFromSupabase);
     const { summary } = result;
     const title = `${portfolioDesc} → ${formatPercent(summary.portfolioReturn)} 수익 | 그때살껄`;
     const description = `${settings.startDate.slice(0, 7)}부터 매${settings.frequency === 'monthly' ? '월' : settings.frequency === 'weekly' ? '주' : '일'} ${formatCurrency(settings.amount)} 적립 시 원금 ${formatCurrency(summary.totalInvested)} → ${formatCurrency(summary.portfolioValue)} (CAGR ${formatPercent(summary.cagr)})`;
@@ -118,7 +88,7 @@ async function ResultContent({ searchParams }: Props) {
 
   let result;
   try {
-    result = await runBacktest(holdings, settings, fetchPrices);
+    result = await runBacktest(holdings, settings, fetchPricesFromSupabase);
   } catch (e) {
     const msg = e instanceof Error ? e.message : '알 수 없는 오류';
     return (

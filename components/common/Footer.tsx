@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Footer() {
   return (
     <footer className="bg-gray-50 border-t border-gray-200 mt-auto">
@@ -10,6 +12,15 @@ export default function Footer() {
             본 서비스는 투자 자문이 아닙니다.
           </p>
           <p className="text-xs text-gray-400">데이터 출처: Yahoo Finance</p>
+          <div className="flex items-center justify-center gap-4 pt-1">
+            <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              이용약관
+            </Link>
+            <span className="text-gray-300 text-xs">|</span>
+            <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              개인정보처리방침
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

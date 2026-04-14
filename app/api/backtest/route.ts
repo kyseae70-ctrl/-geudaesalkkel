@@ -1,53 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runBacktest } from '@/lib/backtest';
-import { getMockPrices } from '@/lib/mock-data';
-import { getSupabaseClient, isMockMode } from '@/lib/supabase';
-import { BacktestRequest, PriceRow } from '@/types';
-
-async function fetchPricesFromSupabase(
-  ticker: string,
-  startDate: string,
-  endDate: string
-): Promise<PriceRow[]> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return getMockPrices(ticker, startDate, endDate);
-
-  // Supabase 기본 limit이 1000행 — 일별 10년치(~2520행)를 모두 가져오기 위해 페이지네이션
-  const allRows: PriceRow[] = [];
-  const PAGE_SIZE = 1000;
-  let from = 0;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from('etf_prices')
-      .select('date, close, dividend')
-      .eq('ticker', ticker)
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error || !data) break;
-
-    for (const row of data) {
-      allRows.push({
-        date: row.date,
-        close: Number(row.close),
-        dividend: Number(row.dividend ?? 0),
-      });
-    }
-
-    if (data.length < PAGE_SIZE) break; // 마지막 페이지
-    from += PAGE_SIZE;
-  }
-
-  if (allRows.length === 0) {
-    // Supabase에 데이터 없으면 mock으로 폴백
-    return getMockPrices(ticker, startDate, endDate);
-  }
-
-  return allRows;
-}
+import { fetchPricesFromSupabase } from '@/lib/prices';
+import { isMockMode } from '@/lib/supabase';
+import { BacktestRequest } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
