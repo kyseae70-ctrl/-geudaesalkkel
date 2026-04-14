@@ -74,44 +74,44 @@ export default function ShareCard({ result, holdings, settings }: ShareCardProps
 
   return (
     <div className="space-y-4">
-      {/* 공유 카드 미리보기 */}
+      {/* 공유 카드 미리보기 — html2canvas 호환을 위해 색상은 인라인 hex 스타일 사용 */}
       <div
         ref={cardRef}
-        className="bg-gray-900 text-white rounded-2xl p-6 max-w-sm mx-auto"
-        style={{ fontFamily: 'sans-serif' }}
+        className="rounded-2xl p-6 max-w-sm mx-auto"
+        style={{ fontFamily: 'sans-serif', backgroundColor: '#111827', color: '#ffffff' }}
       >
         <div className="text-2xl mb-3">😱 그때살껄...</div>
-        <div className="text-sm text-gray-300 mb-4">{portfolioDesc}</div>
+        <div className="text-sm mb-4" style={{ color: '#d1d5db' }}>{portfolioDesc}</div>
 
         <div className="space-y-2 mb-4">
           <div className="flex justify-between">
-            <span className="text-gray-400 text-sm">투자 원금</span>
+            <span className="text-sm" style={{ color: '#9ca3af' }}>투자 원금</span>
             <span className="font-semibold">{formatCurrency(summary.totalInvested)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400 text-sm">최종 평가액</span>
-            <span className="font-bold text-red-400 text-lg">{formatCurrency(summary.portfolioValue)} 🚀</span>
+            <span className="text-sm" style={{ color: '#9ca3af' }}>최종 평가액</span>
+            <span className="font-bold text-lg" style={{ color: '#f87171' }}>{formatCurrency(summary.portfolioValue)} 🚀</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400 text-sm">수익률</span>
-            <span className="font-bold text-red-400">{formatPercent(summary.portfolioReturn)}</span>
+            <span className="text-sm" style={{ color: '#9ca3af' }}>수익률</span>
+            <span className="font-bold" style={{ color: '#f87171' }}>{formatPercent(summary.portfolioReturn)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400 text-sm">연평균 (CAGR)</span>
-            <span className="font-semibold text-yellow-400">{formatPercent(summary.cagr)}</span>
+            <span className="text-sm" style={{ color: '#9ca3af' }}>연평균 (CAGR)</span>
+            <span className="font-semibold" style={{ color: '#facc15' }}>{formatPercent(summary.cagr)}</span>
           </div>
         </div>
 
-        <div className="border-t border-gray-700 pt-3 text-xs text-gray-400 flex justify-between">
+        <div className="pt-3 text-xs flex justify-between" style={{ borderTop: '1px solid #374151', color: '#9ca3af' }}>
           <span>S&P500이었다면 {formatCurrency(summary.benchmarkValue)}</span>
-          <span className={summary.portfolioValue >= summary.benchmarkValue ? 'text-green-400' : 'text-orange-400'}>
+          <span style={{ color: summary.portfolioValue >= summary.benchmarkValue ? '#4ade80' : '#fb923c' }}>
             {summary.portfolioValue >= summary.benchmarkValue
               ? `+${formatCurrency(summary.portfolioValue - summary.benchmarkValue)} 더!`
               : `${formatCurrency(summary.benchmarkValue - summary.portfolioValue)} 손해`}
           </span>
         </div>
 
-        <div className="mt-3 text-center text-xs text-gray-500">geudaesalkkel.com</div>
+        <div className="mt-3 text-center text-xs" style={{ color: '#6b7280' }}>geudaesalkkel.com</div>
       </div>
 
       {/* 공유 버튼 */}
