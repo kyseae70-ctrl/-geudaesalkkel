@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+
+const GA_ID = 'G-GWKHD0W1QZ';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -22,6 +25,11 @@ export const metadata: Metadata = {
     description: '그때 샀다면 지금쯤... QQQ, SCHD, SPY 등 미국 ETF 백테스트 계산기',
     siteName: '그때살껄',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: '그때살껄 — 미국 ETF 적립식 백테스트',
+    description: '그때 샀다면 지금쯤... QQQ, SCHD, SPY 등 미국 ETF 백테스트 계산기',
+  },
 };
 
 export default function RootLayout({
@@ -31,6 +39,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+      <Script id="gtag-init" strategy="afterInteractive">{`
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '${GA_ID}');
+      `}</Script>
       <body className="min-h-full flex flex-col">
         <Header />
         <div className="flex-1">{children}</div>

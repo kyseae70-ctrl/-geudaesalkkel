@@ -102,9 +102,68 @@ export async function GET(req: NextRequest) {
   const skip = results.filter((r) => r.status === 'skip').length;
   const error = results.filter((r) => r.status === 'error').length;
 
+  // ── 기간별 수익률 재계산 (etf_returns 테이블 업데이트) ──────────────────────
+  let returnsUpdated = 0;
+  try {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+
+    const periodStarts: Record<string, string> = {
+      '1m':  new Date(new Date().setMonth(today.getMonth() - 1)).toISOString().slice(0, 10),
+      '3m':  new Date(new Date().setMonth(today.getMonth() - 3)).toISOString().slice(0, 10),
+      '6m':  new Date(new Date().setMonth(today.getMonth() - 6)).toISOString().slice(0, 10),
+      'ytd': `${today.getFullYear()}-01-01`,
+      '1y':  new Date(new Date().setFullYear(today.getFullYear() - 1)).toISOString().slice(0, 10),
+      '3y':  new Date(new Date().setFullYear(today.getFullYear() - 3)).toISOString().slice(0, 10),
+      '5y':  new Date(new Date().setFullYear(today.getFullYear() - 5)).toISOString().slice(0, 10),
+      'max': '2000-01-01',
+    };
+
+    for (const ticker of TICKERS) {
+      // 최신 종가
+      const { data: latestData } = await supabase
+        .from('etf_prices')
+        .select('close')
+        .eq('ticker', ticker)
+        .order('date', { ascending: false })
+        .limit(1);
+
+      if (!latestData || latestData.length === 0) continue;
+      const latestClose = Number(latestData[0].close);
+
+      const returnRows: { ticker: string; period: string; return_pct: number; updated_at: string }[] = [];
+
+      for (const [period, startDate] of Object.entries(periodStarts)) {
+        const { data: startData } = await supabase
+          .from('etf_prices')
+          .select('close')
+          .eq('ticker', ticker)
+          .gte('date', startDate)
+          .order('date', { ascending: true })
+          .limit(1);
+
+        if (!startData || startData.length === 0) continue;
+        const startClose = Number(startData[0].close);
+        if (startClose <= 0) continue;
+
+        const returnPct = parseFloat(((latestClose - startClose) / startClose * 100).toFixed(2));
+        returnRows.push({ ticker, period, return_pct: returnPct, updated_at: todayStr });
+      }
+
+      if (returnRows.length > 0) {
+        await supabase
+          .from('etf_returns')
+          .upsert(returnRows, { onConflict: 'ticker,period' });
+        returnsUpdated++;
+      }
+    }
+  } catch (err) {
+    console.error('[수익률 재계산] 오류:', err);
+  }
+
   return NextResponse.json({
     date: targetDate,
-    summary: { ok, skip, error },
+    summary: { ok, skip, error, returnsUpdated },
     results,
   });
 }

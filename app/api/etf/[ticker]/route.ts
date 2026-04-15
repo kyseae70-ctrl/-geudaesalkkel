@@ -1,55 +1,55 @@
-import { notFound } from 'next/navigation';
+import { NextRequest, NextResponse } from 'next/server';
 import { ETF_LIST } from '@/lib/etf-list';
-import { fetchPricesFromSupabase } from '@/lib/prices';
 import { getSupabaseClient } from '@/lib/supabase';
-import ETFDetailClient from '@/components/etf/ETFDetailClient';
-import type { Metadata } from 'next';
 import type { ETFDetail, ETFMeta, ETFReturnMap, ETFHolding, ETFSector } from '@/types';
 
 interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export async function generateStaticParams() {
-  return ETF_LIST.map((etf) => ({ ticker: etf.ticker }));
-}
+export async function GET(_req: NextRequest, { params }: Props) {
+  const { ticker: rawTicker } = await params;
+  const ticker = rawTicker.toUpperCase();
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { ticker } = await params;
-  const etf = ETF_LIST.find((e) => e.ticker === ticker.toUpperCase());
-  if (!etf) return {};
-  return {
-    title: `${etf.ticker} - ${etf.name_ko} | 그때살껄`,
-    description: etf.description ?? `${etf.name_ko}(${etf.ticker}) ETF 차트, 수익률, 배당 정보와 백테스트`,
-  };
-}
+  // etf_list 로컬 데이터에서 기본 정보 조회
+  const localEtf = ETF_LIST.find((e) => e.ticker === ticker);
+  if (!localEtf) {
+    return NextResponse.json({ error: '존재하지 않는 ETF입니다.' }, { status: 404 });
+  }
 
-async function fetchETFDetail(ticker: string, localEtf: (typeof ETF_LIST)[number]): Promise<ETFDetail> {
   const supabase = getSupabaseClient();
 
+  // ── 기본값 ───────────────────────────────────────────────────────────────
   let meta: ETFMeta = { ...localEtf };
   let returns: ETFReturnMap = {};
   let holdings: ETFHolding[] = [];
   let sectors: ETFSector[] = [];
 
-  if (!supabase) return { meta, returns, holdings, sectors };
+  if (!supabase) {
+    const result: ETFDetail = { meta, returns, holdings, sectors };
+    return NextResponse.json(result);
+  }
 
+  // ── 병렬 조회 ─────────────────────────────────────────────────────────────
   const [metaRes, returnsRes, holdingsRes, sectorsRes] = await Promise.all([
     supabase
       .from('etf_list')
       .select('ticker,name_ko,name_en,category,description,expense_ratio,inception_date,aum_billion,holdings_count,index_name')
       .eq('ticker', ticker)
       .single(),
+
     supabase
       .from('etf_returns')
       .select('period,return_pct')
       .eq('ticker', ticker),
+
     supabase
       .from('etf_holdings')
       .select('holding_ticker,name,weight,sector')
       .eq('etf_ticker', ticker)
       .order('weight', { ascending: false })
       .limit(15),
+
     supabase
       .from('etf_sector_weights')
       .select('sector,weight')
@@ -57,6 +57,7 @@ async function fetchETFDetail(ticker: string, localEtf: (typeof ETF_LIST)[number
       .order('weight', { ascending: false }),
   ]);
 
+  // ── meta ─────────────────────────────────────────────────────────────────
   if (!metaRes.error && metaRes.data) {
     const d = metaRes.data;
     meta = {
@@ -73,12 +74,14 @@ async function fetchETFDetail(ticker: string, localEtf: (typeof ETF_LIST)[number
     };
   }
 
+  // ── returns ───────────────────────────────────────────────────────────────
   if (!returnsRes.error && returnsRes.data) {
     for (const row of returnsRes.data) {
       (returns as Record<string, number>)[row.period] = row.return_pct;
     }
   }
 
+  // ── holdings ──────────────────────────────────────────────────────────────
   if (!holdingsRes.error && holdingsRes.data) {
     holdings = holdingsRes.data.map((h) => ({
       holding_ticker: h.holding_ticker,
@@ -88,6 +91,7 @@ async function fetchETFDetail(ticker: string, localEtf: (typeof ETF_LIST)[number
     }));
   }
 
+  // ── sectors ───────────────────────────────────────────────────────────────
   if (!sectorsRes.error && sectorsRes.data) {
     sectors = sectorsRes.data.map((s) => ({
       sector: s.sector,
@@ -95,22 +99,6 @@ async function fetchETFDetail(ticker: string, localEtf: (typeof ETF_LIST)[number
     }));
   }
 
-  return { meta, returns, holdings, sectors };
-}
-
-export default async function ETFDetailPage({ params }: Props) {
-  const { ticker: rawTicker } = await params;
-  const ticker = rawTicker.toUpperCase();
-
-  const localEtf = ETF_LIST.find((e) => e.ticker === ticker);
-  if (!localEtf) notFound();
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  const [prices, detail] = await Promise.all([
-    fetchPricesFromSupabase(ticker, '2000-01-01', today),
-    fetchETFDetail(ticker, localEtf),
-  ]);
-
-  return <ETFDetailClient detail={detail} prices={prices} />;
+  const result: ETFDetail = { meta, returns, holdings, sectors };
+  return NextResponse.json(result);
 }

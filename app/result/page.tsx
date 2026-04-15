@@ -11,6 +11,7 @@ import HeatmapChart from '@/components/result/HeatmapChart';
 import DonutChart from '@/components/result/DonutChart';
 import HoldingsTable from '@/components/result/HoldingsTable';
 import ShareCard from '@/components/result/ShareCard';
+import InsightBanner from '@/components/result/InsightBanner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface Props {
@@ -46,7 +47,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         siteName: '그때살껄',
       },
       twitter: {
-        card: 'summary',
+        card: 'summary_large_image',
         title,
         description,
       },
@@ -123,6 +124,9 @@ async function ResultContent({ searchParams }: Props) {
           이 포트폴리오로 계산해보기
         </Link>
       </div>
+
+      {/* 임팩트 헤드라인 */}
+      <InsightBanner result={result} holdings={holdings} settings={settings} />
 
       {result.startDateAdjusted && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { Holding, InvestmentSettings, BacktestResult } from '@/types';
@@ -12,6 +12,7 @@ import HeatmapChart from '@/components/result/HeatmapChart';
 import DonutChart from '@/components/result/DonutChart';
 import HoldingsTable from '@/components/result/HoldingsTable';
 import ShareCard from '@/components/result/ShareCard';
+import InsightBanner from '@/components/result/InsightBanner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 function getDefaultSettings(): InvestmentSettings {
@@ -39,6 +40,7 @@ function CalculatorContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMockData, setIsMockData] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   // URL 파라미터에서 포트폴리오 불러오기
   useEffect(() => {
@@ -92,6 +94,7 @@ function CalculatorContent() {
       }
       setResult(data);
       setIsMockData(data.isMockData ?? false);
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch {
       setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
@@ -125,7 +128,7 @@ function CalculatorContent() {
         </aside>
 
         {/* 결과 패널 */}
-        <div className="space-y-6">
+        <div className="space-y-6" ref={resultRef}>
           {isLoading && <LoadingSpinner message="과거 데이터 기반으로 계산 중입니다..." />}
 
           {error && (
@@ -155,6 +158,9 @@ function CalculatorContent() {
                   ℹ️ {result.startDateAdjusted.reason} (설정 시작일: {result.startDateAdjusted.original})
                 </div>
               )}
+
+              {/* 임팩트 헤드라인 */}
+              <InsightBanner result={result} holdings={holdings} settings={settings} />
 
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <MetricCards summary={result.summary} />

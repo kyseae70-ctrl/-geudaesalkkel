@@ -32,8 +32,9 @@ export function formatNumber(value: number): string {
 
 /** 투자 기간 년수 텍스트 */
 export function formatYears(years: number): string {
-  const y = Math.floor(years);
-  const m = Math.round((years - y) * 12);
+  let y = Math.floor(years);
+  let m = Math.round((years - y) * 12);
+  if (m === 12) { y += 1; m = 0; } // 4년 12개월 → 5년
   if (m === 0) return `${y}년`;
   if (y === 0) return `${m}개월`;
   return `${y}년 ${m}개월`;
