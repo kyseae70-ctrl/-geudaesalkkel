@@ -26,7 +26,12 @@ function getLastTradingDate(): string {
 
 export async function GET(req: NextRequest) {
   // CRON_SECRET으로 무단 호출 방지
-  const secret = req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret');
+  // Vercel Cron은 Authorization: Bearer {CRON_SECRET} 헤더로 전송
+  const authHeader = req.headers.get('authorization');
+  const secret =
+    (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ??
+    req.headers.get('x-cron-secret') ??
+    req.nextUrl.searchParams.get('secret');
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: '인증 실패' }, { status: 401 });
   }
